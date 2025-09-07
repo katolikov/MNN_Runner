@@ -47,3 +47,22 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Additional ignores to prevent huge pushes
+# Gradle and Android caches
+.gradle/
+**/.gradle/
+.gradle-home/
+**/.gradle-home/
+android/**/build/
+
+# Flutter build outputs in subpackages
+**/build/
+
+# Local toolchains and custom native build dirs
+.jdk/
+.mnn-build/
+
+# CocoaPods (if used)
+ios/Pods/
+macos/Pods/
