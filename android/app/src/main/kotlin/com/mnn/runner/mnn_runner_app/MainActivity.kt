@@ -143,6 +143,13 @@ class MainActivity : FlutterActivity() {
 
                                 // Load optional backend plugin libs just-in-time
                                 NativeBridge.ensureBackendLibs(backend, backupType)
+                                // Guard: if Vulkan requested but runtime not fully available, fall back early
+                                if (backend.equals("VULKAN", true) && !NativeBridge.hasVulkanRuntime()) {
+                                    // Prefer OpenCL fallback when available; otherwise use backupType or CPU
+                                    val probe = try { JSONObject(NativeBridge.probeBackends()) } catch (_: Throwable) { null }
+                                    val clAvail = probe?.optJSONObject("opencl")?.optBoolean("available", false) == true
+                                    backend = if (clAvail) "OPENCL" else backupType.ifBlank { "CPU" }
+                                }
 
                                 val jniMsg = try {
                                     if (inputShapesObj != null && inputShapesObj.length() > 0) {

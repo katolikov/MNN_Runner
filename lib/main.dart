@@ -5,6 +5,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'json_viewer.dart';
+import 'util/color_compat.dart';
 
 enum MnnBackend { auto, cpu, opencl, vulkan, metal, openGL }
 

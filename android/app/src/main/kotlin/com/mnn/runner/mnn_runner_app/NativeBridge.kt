@@ -32,8 +32,10 @@ object NativeBridge {
         // causes noisy linker warnings. If you need Express, ship libMNN_Express.so
         // under jniLibs/<ABI>/ and load it explicitly at that time.
         if (p == "VULKAN" || b == "VULKAN") {
-            // Load packaged Vulkan plugin
+            // Load packaged Vulkan plugin, best-effort
             tryLoadLibrary("MNN_Vulkan")
+            // Preload system vulkan loader to fail early if missing
+            tryLoadLibrary("vulkan")
         }
         if (p == "OPENCL" || b == "OPENCL") {
             // Load packaged OpenCL plugin only (no libOpenCL preload).
@@ -46,6 +48,17 @@ object NativeBridge {
     }
 
     /**
+     * Check if Vulkan runtime and MNN Vulkan plugin can be loaded in this process.
+     * This intentionally only checks dlopen/loadLibrary feasibility and avoids creating instances.
+     */
+    @JvmStatic
+    fun hasVulkanRuntime(): Boolean {
+        val vk = tryLoadLibrary("vulkan")
+        val plugin = tryLoadLibrary("MNN_Vulkan")
+        return vk && plugin
+    }
+
+    /**
      * Probe availability of CPU/VULKAN/OPENCL backends and return a JSON string.
      * Example: {"cpu":{"available":true},"vulkan":{"available":true,"lib":true,"plugin":true},"opencl":{"available":false,"lib":false,"plugin":false,"source":null}}
      */
@@ -53,9 +66,8 @@ object NativeBridge {
     fun probeBackends(): String {
         val cpuAvail = true
 
-        // Vulkan probe: attempt to load packaged plugin only
-        val vkPlugin = tryLoadLibrary("MNN_Vulkan")
-        val vkAvail = vkPlugin
+        // Vulkan probe: require both system loader and packaged plugin to be present
+        val vkAvail = hasVulkanRuntime()
 
         // OpenCL probe: Try loading libMNN_CL.so only. We do NOT load vendor libOpenCL.so here.
         // Modern MNN CL builds don't link against libOpenCL at load time and will dlopen
@@ -69,8 +81,8 @@ object NativeBridge {
         sb.append(',')
         sb.append("\"vulkan\":{")
             .append("\"available\":").append(if (vkAvail) "true" else "false").append(',')
-            .append("\"lib\":").append(if (vkPlugin) "true" else "false").append(',')
-            .append("\"plugin\":").append(if (vkPlugin) "true" else "false").append(',')
+            .append("\"lib\":").append(if (vkAvail) "true" else "false").append(',')
+            .append("\"plugin\":").append(if (vkAvail) "true" else "false").append(',')
             .append("\"source\":\"apk\"")
             .append('}')
         sb.append(',')

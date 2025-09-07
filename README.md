@@ -4,7 +4,7 @@ Flutter app to run and profile MNN models on Android (JNI/C++17) with a clean UI
 
 • Download: see GitHub Releases — https://github.com/katolikov/MNN_Runner/releases
 
-![Screenshot](docs/screenshot.svg)
+![Screenshot](docs/screenshot_android.png)
 
 ## Features
 
@@ -43,6 +43,13 @@ Flutter app to run and profile MNN models on Android (JNI/C++17) with a clean UI
 - Analyze/lint: `flutter analyze`
 - Format: `dart format .`
 - Test: `flutter test`
+
+## Screenshots
+
+- Android 15/16: use `scripts/screenshot_android.sh` to build, install, launch, and capture a screenshot to `docs/screenshot_android.png`.
+  - Usage: `scripts/screenshot_android.sh [serial]`
+  - Pass a device serial if multiple devices are connected: find with `adb devices`.
+  - Ensure an emulator or device on Android 15/16 is connected and unlocked.
 
 ## Android Release APK
 

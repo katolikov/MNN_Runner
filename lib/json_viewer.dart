@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'util/color_compat.dart';
 
 class JsonViewerScreen extends StatefulWidget {
   final dynamic jsonData; // Map/List already parsed
