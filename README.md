@@ -2,6 +2,8 @@
 
 Flutter app to run and profile MNN models on Android (JNI/C++17) with a clean UI, backend probing, and metrics.
 
+• Download: see GitHub Releases — https://github.com/katolikov/MNN_Runner/releases
+
 ![Screenshot](docs/screenshot.png)
 
 ## Features
@@ -52,11 +54,11 @@ Note on minSdk: modern Flutter (3.24+) recommends `minSdkVersion >= 21`. Vulkan 
 
 ## GitHub Integration
 
-This project is ready to be added to `https://github.com/katolikov/MNN_Runner`.
+Repository: https://github.com/katolikov/MNN_Runner
 
-1. Create the repository on GitHub and push this codebase.
-2. Ensure native libs are committed under `android/app/src/main/jniLibs/`.
-3. Optionally enable the provided GitHub Action (see below) to build and attach APKs to releases.
+1. Ensure native libs are committed under `android/app/src/main/jniLibs/`.
+2. Tag a version (e.g., `git tag v1.0.0 && git push origin v1.0.0`).
+3. The provided GitHub Action builds a release APK and attaches it to the tag’s Release page.
 
 ### GitHub Actions (Android Release)
 
@@ -64,7 +66,10 @@ We include a simple workflow under `.github/workflows/android-release.yml`. It b
 
 ## Screenshots
 
-- Add your app screenshot to `docs/screenshot.png` for the README preview.
+- Add a main app screenshot to `docs/screenshot.png` for the README preview.
+- Optionally add more under `docs/screenshots/` and reference them here:
+  - `![Home](docs/screenshots/home.png)`
+  - `![Report](docs/screenshots/report.png)`
 
 ## Security Notes
 
