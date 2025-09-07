@@ -143,11 +143,14 @@ class _JsonTreeNodeState extends State<_JsonTreeNode> {
     }
 
     final int count = v.length;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF7F7F7);
+    final br = isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE6E6E6);
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 2),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F7F7),
-        border: Border.all(color: const Color(0xFFE6E6E6)),
+        color: bg,
+        border: Border.all(color: br),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
@@ -173,7 +176,12 @@ class _JsonTreeNodeState extends State<_JsonTreeNode> {
                   const SizedBox(width: 6),
                   Text(
                     isMap ? '{...} ($count)' : '[...] ($count)',
-                    style: TextStyle(color: Colors.grey.shade700),
+                    style: TextStyle(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(isDark ? 0.8 : 0.7),
+                    ),
                   ),
                 ],
               ),
@@ -506,9 +514,13 @@ class _TimelineContent extends StatelessWidget {
         SizedBox(
           height: 30,
           width: width,
-          child: CustomPaint(
-            painter: _AxisPainter(maxMs: maxMs, scale: scale),
+        child: CustomPaint(
+          painter: _AxisPainter(
+            maxMs: maxMs,
+            scale: scale,
+            textColor: Theme.of(context).colorScheme.onSurface,
           ),
+        ),
         ),
         const SizedBox(height: 6),
         for (final lane in lanes) ...[
@@ -613,18 +625,33 @@ class _InfoRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5),
+        color: (Theme.of(context).brightness == Brightness.dark)
+            ? const Color(0xFF1A1A1A)
+            : const Color(0xFFF5F5F5),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFFE6E6E6)),
+        border: Border.all(
+          color: (Theme.of(context).brightness == Brightness.dark)
+              ? const Color(0xFF2A2A2A)
+              : const Color(0xFFE6E6E6),
+        ),
       ),
       child: RichText(
         text: TextSpan(
           children: [
             TextSpan(
               text: '$label: ',
-              style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withOpacity(0.75),
+                fontWeight: FontWeight.w600,
+              ),
             ),
-            TextSpan(text: value, style: const TextStyle(color: Colors.black87)),
+            TextSpan(
+              text: value,
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurface),
+            ),
           ],
         ),
       ),
@@ -725,19 +752,25 @@ class _Chip extends StatelessWidget {
   const _Chip({required this.label, required this.value});
   @override
   Widget build(BuildContext context) {
-    final color = Colors.black87;
+    final onSurface = Theme.of(context).colorScheme.onSurface;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF5F5F5);
+    final br = isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE6E6E6);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5),
+        color: bg,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFFE6E6E6)),
+        border: Border.all(color: br),
       ),
       child: RichText(
         text: TextSpan(
           children: [
-            TextSpan(text: '$label: ', style: TextStyle(color: Colors.grey.shade700, fontWeight: FontWeight.w600)),
-            TextSpan(text: value, style: TextStyle(color: color)),
+            TextSpan(
+              text: '$label: ',
+              style: TextStyle(color: onSurface.withOpacity(0.75), fontWeight: FontWeight.w600),
+            ),
+            TextSpan(text: value, style: TextStyle(color: onSurface)),
           ],
         ),
       ),
@@ -750,11 +783,14 @@ class _Card extends StatelessWidget {
   const _Card({required this.child});
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF5F5F5);
+    final br = isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE6E6E6);
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5),
+        color: bg,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE6E6E6)),
+        border: Border.all(color: br),
       ),
       padding: const EdgeInsets.all(12),
       child: child,
@@ -765,7 +801,8 @@ class _Card extends StatelessWidget {
 class _AxisPainter extends CustomPainter {
   final double maxMs;
   final double scale;
-  _AxisPainter({required this.maxMs, required this.scale});
+  final Color textColor;
+  _AxisPainter({required this.maxMs, required this.scale, required this.textColor});
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
@@ -787,7 +824,7 @@ class _AxisPainter extends CustomPainter {
       );
       final tp = TextSpan(
         text: '+${ms.toInt()}ms',
-        style: const TextStyle(fontSize: 10, color: Colors.black87),
+        style: TextStyle(fontSize: 10, color: textColor.withOpacity(0.87)),
       );
       textPainter.text = tp;
       textPainter.layout();

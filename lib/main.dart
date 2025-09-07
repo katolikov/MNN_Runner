@@ -74,6 +74,29 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   final ValueNotifier<ThemeMode> _mode = ValueNotifier(ThemeMode.light);
 
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedTheme();
+  }
+
+  Future<void> _loadSavedTheme() async {
+    try {
+      final dir = await getApplicationSupportDirectory();
+      final f = File('${dir.path}/settings.json');
+      if (!await f.exists()) return;
+      final obj = jsonDecode(await f.readAsString()) as Map<String, dynamic>;
+      final t = (obj['theme'] as String?)?.toLowerCase();
+      if (t == 'dark') {
+        _mode.value = ThemeMode.dark;
+      } else if (t == 'light') {
+        _mode.value = ThemeMode.light;
+      }
+    } catch (_) {
+      // ignore
+    }
+  }
+
   ThemeData _lightTheme() {
     final baseScheme = const ColorScheme.light(
       primary: Colors.black,
@@ -120,7 +143,17 @@ class _MyAppState extends State<MyApp> {
 
   ThemeData _darkTheme() {
     final base = ThemeData.dark();
+    final scheme = const ColorScheme.dark(
+      primary: Colors.white,
+      onPrimary: Colors.black,
+      secondary: Colors.white,
+      onSecondary: Colors.black,
+      surface: Color(0xFF121212),
+      onSurface: Colors.white,
+    );
     return base.copyWith(
+      colorScheme: scheme,
+      scaffoldBackgroundColor: scheme.surface,
       appBarTheme: const AppBarTheme(
         backgroundColor: Color(0xFF121212),
         foregroundColor: Colors.white,
@@ -187,6 +220,8 @@ class _RunnerHomeState extends State<_RunnerHome> {
   InputFill _fill = InputFill.zero;
   bool _profile = false;
   bool _cache = false;
+  bool _warmup = true;
+  bool _warmupOnStart = false;
   List<_ModelInputInfo>? _inputs; // Populated after detection
   List<_EditableInput>? _editableInputs; // Controllers for per-input shapes
   _ProfileResult? _lastProfile;
@@ -207,6 +242,15 @@ class _RunnerHomeState extends State<_RunnerHome> {
     }
     // Load persisted recent models list
     _loadRecentModels();
+    // Load saved UI settings and last model/shape
+    _loadSettings();
+    // Persist text edits for model and shape
+    _modelCtrl.addListener(() {
+      _saveSettingsPatch({'lastModelPath': _modelCtrl.text.trim()});
+    });
+    _shapeCtrl.addListener(() {
+      _saveSettingsPatch({'lastShape': _shapeCtrl.text.trim()});
+    });
   }
 
   _Probe? _vkProbe;
@@ -267,6 +311,7 @@ class _RunnerHomeState extends State<_RunnerHome> {
         _disposeEditableInputs();
         _editableInputs = null;
       });
+      _saveSettingsPatch({'lastModelPath': _modelCtrl.text.trim()});
     } else {
       setState(() => _status = 'Unable to access selected file');
     }
@@ -320,6 +365,7 @@ class _RunnerHomeState extends State<_RunnerHome> {
             .map((i) => _EditableInput(i.name, i.dtype, i.dims))
             .toList();
       });
+      _saveSettingsPatch({'lastShape': _shapeCtrl.text.trim()});
     } catch (e) {
       setState(() => _status = 'Detect error: $e');
     }
@@ -357,6 +403,103 @@ class _RunnerHomeState extends State<_RunnerHome> {
   }
 
   Future<Directory> _ensureCacheDir() async => await getTemporaryDirectory();
+
+  Future<File?> _settingsFile() async {
+    try {
+      final dir = await getApplicationSupportDirectory();
+      return File('${dir.path}/settings.json');
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _loadSettings() async {
+    try {
+      final f = await _settingsFile();
+      if (f == null || !(await f.exists())) return;
+      final obj = jsonDecode(await f.readAsString()) as Map<String, dynamic>;
+      setState(() {
+        _profile = (obj['profile'] as bool?) ?? _profile;
+        _cache = (obj['cache'] as bool?) ?? _cache;
+        _warmup = (obj['warmup'] as bool?) ?? _warmup;
+        _warmupOnStart = (obj['warmupOnStart'] as bool?) ?? _warmupOnStart;
+        String? s(Object? v) => (v as String?)?.toUpperCase();
+        _backend = _parseBackend(s(obj['backend'])) ?? _backend;
+        _backup = _parseBackend(s(obj['backup'])) ?? _backup;
+        _memory = _parseMemory(s(obj['memoryMode'])) ?? _memory;
+        _precision = _parsePrecision(s(obj['precisionMode'])) ?? _precision;
+        _power = _parsePower(s(obj['powerMode'])) ?? _power;
+        _fill = _parseFill(s(obj['inputFill'])) ?? _fill;
+        _threads = (obj['threads'] as num?)?.toInt() ?? _threads;
+        final lm = (obj['lastModelPath'] as String?)?.trim();
+        final ls = (obj['lastShape'] as String?)?.trim();
+        if (lm != null && lm.isNotEmpty) _modelCtrl.text = lm;
+        if (ls != null && ls.isNotEmpty) _shapeCtrl.text = ls;
+      });
+      if (_warmupOnStart && Platform.isAndroid) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => _runWarmupOnly());
+      }
+    } catch (_) {
+      // ignore
+    }
+  }
+
+  Future<void> _saveSettingsPatch(Map<String, dynamic> patch) async {
+    try {
+      final f = await _settingsFile();
+      if (f == null) return;
+      Map<String, dynamic> base = {};
+      if (await f.exists()) {
+        try {
+          base = jsonDecode(await f.readAsString()) as Map<String, dynamic>;
+        } catch (_) {}
+      }
+      base.addAll(patch);
+      await f.writeAsString(jsonEncode(base));
+    } catch (_) {
+      // ignore
+    }
+  }
+
+  MnnBackend? _parseBackend(String? s) {
+    if (s == null) return null;
+    for (final v in MnnBackend.values) {
+      if (v.name.toUpperCase() == s) return v;
+    }
+    return null;
+  }
+
+  MemoryMode? _parseMemory(String? s) {
+    if (s == null) return null;
+    for (final v in MemoryMode.values) {
+      if (v.name.toUpperCase() == s) return v;
+    }
+    return null;
+  }
+
+  PrecisionMode? _parsePrecision(String? s) {
+    if (s == null) return null;
+    for (final v in PrecisionMode.values) {
+      if (v.name.toUpperCase() == s) return v;
+    }
+    return null;
+  }
+
+  PowerMode? _parsePower(String? s) {
+    if (s == null) return null;
+    for (final v in PowerMode.values) {
+      if (v.name.toUpperCase() == s) return v;
+    }
+    return null;
+  }
+
+  InputFill? _parseFill(String? s) {
+    if (s == null) return null;
+    for (final v in InputFill.values) {
+      if (v.name.toUpperCase() == s) return v;
+    }
+    return null;
+  }
 
   Future<File?> _historyFile() async {
     try {
@@ -439,6 +582,22 @@ class _RunnerHomeState extends State<_RunnerHome> {
       // Invalid per-input shape present; status already set.
       return;
     }
+    // Persist key selections and last-used config
+    _saveSettingsPatch({
+      'backend': _backend.name.toUpperCase(),
+      'backup': _backup.name.toUpperCase(),
+      'memoryMode': _memory.name.toUpperCase(),
+      'precisionMode': _precision.name.toUpperCase(),
+      'powerMode': _power.name.toUpperCase(),
+      'inputFill': _fill.name.toUpperCase(),
+      'threads': _threads,
+      'profile': _profile,
+      'cache': _cache,
+      'warmup': _warmup,
+      'lastModelPath': modelPath,
+      'lastShape': _shapeCtrl.text.trim(),
+      if (perInput != null) 'lastInputShapes': perInput,
+    });
     _lastProfile = null;
     final cfg = MnnRunConfig(
       modelPath: modelPath,
@@ -456,9 +615,38 @@ class _RunnerHomeState extends State<_RunnerHome> {
     );
     setState(() {
       _running = true;
-      _status = 'Running...';
+      _status = _warmup ? 'Warming up…' : 'Running...';
     });
     try {
+      // Optional warmup pass (non-profile) to prime kernels and caches
+      if (_warmup && Platform.isAndroid) {
+        final warmCfg = MnnRunConfig(
+          modelPath: cfg.modelPath,
+          inputShape: cfg.inputShape,
+          inputShapes: cfg.inputShapes,
+          backend: cfg.backend,
+          backupType: cfg.backupType,
+          memoryMode: cfg.memoryMode,
+          precisionMode: cfg.precisionMode,
+          powerMode: cfg.powerMode,
+          inputFill: cfg.inputFill,
+          threads: cfg.threads,
+          profile: false,
+          cache: cfg.cache,
+        );
+        try {
+          await _channel.invokeMethod<String>(
+            'runModel',
+            jsonEncode(warmCfg.toJson()),
+          );
+        } catch (e) {
+          setState(() => _status = 'Warmup failed: $e');
+          return;
+        }
+        if (mounted) setState(() => _status = 'Running...');
+      } else if (_warmup && !Platform.isAndroid) {
+        if (mounted) setState(() => _status = 'Running...');
+      }
       final runStartMs = DateTime.now().millisecondsSinceEpoch;
       final res = await _channel.invokeMethod<String>(
         'runModel',
@@ -493,6 +681,40 @@ class _RunnerHomeState extends State<_RunnerHome> {
       setState(() => _status = 'Error: ${e.message}');
     } catch (e) {
       setState(() => _status = 'Error: $e');
+    } finally {
+      if (mounted) setState(() => _running = false);
+    }
+  }
+
+  Future<void> _runWarmupOnly() async {
+    final shape = _parseShape(_shapeCtrl.text);
+    final modelPath = _modelCtrl.text.trim();
+    if (!Platform.isAndroid || modelPath.isEmpty || shape == null) return;
+    if (_running) return;
+    setState(() {
+      _running = true;
+      _status = 'Warming up…';
+    });
+    try {
+      final perInput = _collectPerInputShapes();
+      final warmCfg = MnnRunConfig(
+        modelPath: modelPath,
+        inputShape: shape,
+        inputShapes: perInput,
+        backend: _backend,
+        backupType: _backup,
+        memoryMode: _memory,
+        precisionMode: _precision,
+        powerMode: _power,
+        inputFill: _fill,
+        threads: _threads,
+        profile: false,
+        cache: _cache,
+      );
+      await _channel.invokeMethod<String>('runModel', jsonEncode(warmCfg.toJson()));
+      if (mounted) setState(() => _status = 'Warmup ready');
+    } catch (e) {
+      if (mounted) setState(() => _status = 'Warmup error: $e');
     } finally {
       if (mounted) setState(() => _running = false);
     }
@@ -561,7 +783,9 @@ class _RunnerHomeState extends State<_RunnerHome> {
                 onPressed: _running
                     ? null
                     : () {
-                        widget.themeMode.value = isDark ? ThemeMode.light : ThemeMode.dark;
+                        final next = isDark ? ThemeMode.light : ThemeMode.dark;
+                        widget.themeMode.value = next;
+                        _saveSettingsPatch({'theme': next == ThemeMode.dark ? 'dark' : 'light'});
                       },
                 icon: Icon(isDark ? Icons.light_mode : Icons.dark_mode),
               );
@@ -591,13 +815,11 @@ class _RunnerHomeState extends State<_RunnerHome> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Recent models',
-                        style: TextStyle(
-                          color: Colors.grey.shade800,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      Text('Recent models',
+                          style: Theme.of(context)
+                              .textTheme
+                              .titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w600)),
                       const SizedBox(height: 8),
                       Wrap(
                         spacing: 8,
@@ -614,10 +836,17 @@ class _RunnerHomeState extends State<_RunnerHome> {
                                         _disposeEditableInputs();
                                         _editableInputs = null;
                                       });
+                                      _saveSettingsPatch({'lastModelPath': p});
                                     },
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: Colors.black,
-                                side: const BorderSide(color: Color(0xFFE0E0E0)),
+                                foregroundColor:
+                                    Theme.of(context).colorScheme.onSurface,
+                                side: BorderSide(
+                                  color: Theme.of(context).brightness ==
+                                          Brightness.dark
+                                      ? const Color(0xFF2E2E2E)
+                                      : const Color(0xFFE0E0E0),
+                                ),
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 10,
                                   vertical: 8,
@@ -689,7 +918,10 @@ class _RunnerHomeState extends State<_RunnerHome> {
                     .toList(),
                 onChanged: _running
                     ? null
-                    : (v) => setState(() => _fill = v ?? _fill),
+                    : (v) {
+                        setState(() => _fill = v ?? _fill);
+                        _saveSettingsPatch({'inputFill': _fill.name.toUpperCase()});
+                      },
               ),
               if (_inputs != null) ...[
                 const SizedBox(height: 12),
@@ -735,7 +967,10 @@ class _RunnerHomeState extends State<_RunnerHome> {
                           .toList(),
                       onChanged: _running
                           ? null
-                          : (v) => setState(() => _backend = v ?? _backend),
+                          : (v) {
+                              setState(() => _backend = v ?? _backend);
+                              _saveSettingsPatch({'backend': _backend.name.toUpperCase()});
+                            },
                     ),
                     const SizedBox(height: 8),
                     Align(
@@ -770,7 +1005,10 @@ class _RunnerHomeState extends State<_RunnerHome> {
                           .toList(),
                       onChanged: _running
                           ? null
-                          : (v) => setState(() => _backup = v ?? _backup),
+                          : (v) {
+                              setState(() => _backup = v ?? _backup);
+                              _saveSettingsPatch({'backup': _backup.name.toUpperCase()});
+                            },
                     ),
                     const SizedBox(height: 12),
                     _Dropdown<MemoryMode>(
@@ -786,7 +1024,10 @@ class _RunnerHomeState extends State<_RunnerHome> {
                           .toList(),
                       onChanged: _running
                           ? null
-                          : (v) => setState(() => _memory = v ?? _memory),
+                          : (v) {
+                              setState(() => _memory = v ?? _memory);
+                              _saveSettingsPatch({'memoryMode': _memory.name.toUpperCase()});
+                            },
                     ),
                     const SizedBox(height: 12),
                     _Dropdown<PrecisionMode>(
@@ -802,7 +1043,10 @@ class _RunnerHomeState extends State<_RunnerHome> {
                           .toList(),
                       onChanged: _running
                           ? null
-                          : (v) => setState(() => _precision = v ?? _precision),
+                          : (v) {
+                              setState(() => _precision = v ?? _precision);
+                              _saveSettingsPatch({'precisionMode': _precision.name.toUpperCase()});
+                            },
                     ),
                     const SizedBox(height: 12),
                     _Dropdown<PowerMode>(
@@ -818,7 +1062,10 @@ class _RunnerHomeState extends State<_RunnerHome> {
                           .toList(),
                       onChanged: _running
                           ? null
-                          : (v) => setState(() => _power = v ?? _power),
+                          : (v) {
+                              setState(() => _power = v ?? _power);
+                              _saveSettingsPatch({'powerMode': _power.name.toUpperCase()});
+                            },
                     ),
                     const SizedBox(height: 12),
                     Row(
@@ -830,10 +1077,13 @@ class _RunnerHomeState extends State<_RunnerHome> {
                             max: 8,
                             divisions: 7,
                             label: '$_threads threads',
-                            onChanged: _running
-                                ? null
-                                : (v) => setState(() => _threads = v.round()),
-                          ),
+                          onChanged: _running
+                              ? null
+                              : (v) => setState(() => _threads = v.round()),
+                          onChangeEnd: _running
+                              ? null
+                              : (_) => _saveSettingsPatch({'threads': _threads}),
+                        ),
                         ),
                         Text('$_threads'),
                       ],
@@ -854,7 +1104,10 @@ class _RunnerHomeState extends State<_RunnerHome> {
                           value: _profile,
                           onChanged: _running
                               ? null
-                              : (v) => setState(() => _profile = v ?? _profile),
+                              : (v) {
+                                  setState(() => _profile = v ?? _profile);
+                                  _saveSettingsPatch({'profile': _profile});
+                                },
                         ),
                         const Text('Profile performance'),
                       ],
@@ -865,9 +1118,40 @@ class _RunnerHomeState extends State<_RunnerHome> {
                           value: _cache,
                           onChanged: _running
                               ? null
-                              : (v) => setState(() => _cache = v ?? _cache),
+                              : (v) {
+                                  setState(() => _cache = v ?? _cache);
+                                  _saveSettingsPatch({'cache': _cache});
+                                },
                         ),
                         const Text('Save GPU cache (Vulkan/OpenCL)'),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: _warmup,
+                          onChanged: _running
+                              ? null
+                              : (v) {
+                                  setState(() => _warmup = v ?? _warmup);
+                                  _saveSettingsPatch({'warmup': _warmup});
+                                },
+                        ),
+                        const Text('Warm up before run'),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Checkbox(
+                          value: _warmupOnStart,
+                          onChanged: _running
+                              ? null
+                              : (v) {
+                                  setState(() => _warmupOnStart = v ?? _warmupOnStart);
+                                  _saveSettingsPatch({'warmupOnStart': _warmupOnStart});
+                                },
+                        ),
+                        const Text('Warm up on app start (Android)'),
                       ],
                     ),
                   ],
@@ -1014,11 +1298,14 @@ class _MonochromeCard extends StatelessWidget {
   const _MonochromeCard({required this.child});
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF5F5F5);
+    final br = isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE6E6E6);
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFFF5F5F5),
+        color: bg,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE6E6E6)),
+        border: Border.all(color: br),
       ),
       padding: const EdgeInsets.all(12),
       child: child,
@@ -1039,18 +1326,25 @@ class _Dropdown<T> extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final labelColor = Theme.of(context)
+        .colorScheme
+        .onSurface
+        .withOpacity(isDark ? 0.8 : 0.7);
+    final bg = isDark ? const Color(0xFF1A1A1A) : const Color(0xFFF5F5F5);
+    final br = isDark ? const Color(0xFF2A2A2A) : const Color(0xFFE6E6E6);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.only(bottom: 6),
-          child: Text(label, style: TextStyle(color: Colors.grey.shade700)),
+          child: Text(label, style: TextStyle(color: labelColor)),
         ),
         Container(
           decoration: BoxDecoration(
-            color: const Color(0xFFF5F5F5),
+            color: bg,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFE6E6E6)),
+            border: Border.all(color: br),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 12),
           child: DropdownButton<T>(
@@ -1193,7 +1487,11 @@ class _TimelineCard extends StatelessWidget {
         height: 30,
         width: width,
         child: CustomPaint(
-          painter: _AxisPainter(maxMs: maxMs, scale: scale),
+          painter: _AxisPainter(
+            maxMs: maxMs,
+            scale: scale,
+            textColor: Theme.of(context).colorScheme.onSurface,
+          ),
         ),
       ),
     );
@@ -1283,7 +1581,8 @@ class _TimelineCard extends StatelessWidget {
 class _AxisPainter extends CustomPainter {
   final double maxMs;
   final double scale;
-  _AxisPainter({required this.maxMs, required this.scale});
+  final Color textColor;
+  _AxisPainter({required this.maxMs, required this.scale, required this.textColor});
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
@@ -1307,7 +1606,7 @@ class _AxisPainter extends CustomPainter {
       );
       final tp = TextSpan(
         text: '+${ms.toInt()}ms',
-        style: const TextStyle(fontSize: 10, color: Colors.black87),
+        style: TextStyle(fontSize: 10, color: textColor.withOpacity(0.87)),
       );
       textPainter.text = tp;
       textPainter.layout();
