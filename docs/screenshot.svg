@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="800" viewBox="0 0 1280 800">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+  </defs>
+  <rect width="100%" height="100%" fill="url(#g)"/>
+  <rect x="80" y="80" width="1120" height="640" rx="16" fill="#111827" stroke="#334155" stroke-width="2"/>
+  <text x="115" y="150" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial" font-size="36" fill="#e5e7eb" font-weight="700">MNN Runner</text>
+  <text x="115" y="190" font-family="-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial" font-size="16" fill="#9ca3af">Flutter app to run/profile MNN models (CPU / Vulkan / OpenCL)</text>
+  <rect x="110" y="230" width="1060" height="440" rx="12" fill="#0b1220" stroke="#263042"/>
+  <g transform="translate(140,270)">
+    <rect width="320" height="360" rx="10" fill="#111827" stroke="#374151"/>
+    <text x="16" y="28" font-size="18" fill="#e5e7eb">Model</text>
+    <rect x="16" y="48" width="288" height="32" rx="6" fill="#0f172a" stroke="#334155"/>
+    <text x="24" y="69" font-size="14" fill="#94a3b8">/sdcard/Download/model.mnn</text>
+    <text x="16" y="110" font-size="18" fill="#e5e7eb">Backend</text>
+    <rect x="16" y="130" width="288" height="32" rx="6" fill="#0f172a" stroke="#334155"/>
+    <text x="24" y="151" font-size="14" fill="#93c5fd">VULKAN</text>
+    <rect x="16" y="190" width="130" height="36" rx="8" fill="#2563eb"/>
+    <text x="32" y="214" font-size="14" fill="#fff">Run</text>
+    <rect x="160" y="190" width="144" height="36" rx="8" fill="#1f2937" stroke="#374151"/>
+    <text x="176" y="214" font-size="14" fill="#e5e7eb">Profile</text>
+  </g>
+  <g transform="translate(500,270)">
+    <rect width="640" height="360" rx="10" fill="#0f172a" stroke="#334155"/>
+    <text x="16" y="28" font-size="18" fill="#e5e7eb">Report</text>
+    <text x="16" y="60" font-size="14" fill="#a1a1aa">MNN 3.1.0 OK backend=VULKAN outputs: output0[1x1000]</text>
+    <text x="16" y="90" font-size="12" fill="#9ca3af">createInterpreter: 12.4 ms | createSession: 34.1 ms | resizeSession: 3.2 ms | runSession: 18.7 ms</text>
+  </g>
+  <text x="80" y="760" font-size="12" fill="#64748b">Replace this SVG with an actual screenshot at docs/screenshot.png when available.</text>
+</svg>

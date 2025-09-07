@@ -4,7 +4,7 @@ Flutter app to run and profile MNN models on Android (JNI/C++17) with a clean UI
 
 • Download: see GitHub Releases — https://github.com/katolikov/MNN_Runner/releases
 
-![Screenshot](docs/screenshot.png)
+![Screenshot](docs/screenshot.svg)
 
 ## Features
 
