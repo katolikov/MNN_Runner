@@ -31,9 +31,14 @@ jobs:
       - name: Generate screenshot
         run: flutter test test/generate_screenshot_test.dart -r expanded
 
+      - name: Switch README to PNG
+        run: |
+          if grep -q "docs/screenshot.svg" README.md; then
+            sed -i 's#docs/screenshot.svg#docs/screenshot.png#g' README.md
+          fi
+
       - name: Commit screenshot
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: 'chore(docs): update app screenshot'
-          file_pattern: 'docs/screenshot.png'
-
+          commit_message: 'chore(docs): update app screenshot and README reference'
+          file_pattern: 'docs/screenshot.png README.md'
