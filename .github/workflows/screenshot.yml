@@ -1,0 +1,39 @@
+name: Generate Screenshot
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  screenshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.3'
+          channel: 'stable'
+
+      - name: Pub get
+        run: flutter pub get
+
+      - name: Generate screenshot
+        run: flutter test test/generate_screenshot_test.dart -r expanded
+
+      - name: Commit screenshot
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: 'chore(docs): update app screenshot'
+          file_pattern: 'docs/screenshot.png'
+
