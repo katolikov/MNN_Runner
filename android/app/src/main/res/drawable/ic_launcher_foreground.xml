@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Stylized "NN" mark for MNN Runner -->
+    <!-- Left vertical bar -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M28,20h12v68h-12z"/>
+    <!-- Diagonal bar -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M44,20h12l20,68h-12z"/>
+    <!-- Right vertical bar -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M76,20h12v68h-12z"/>
+    <!-- Optional subtle baseline -->
+    <path
+        android:fillColor="#33FFFFFF"
+        android:pathData="M24,90h60v2h-60z"/>
+</vector>
+
